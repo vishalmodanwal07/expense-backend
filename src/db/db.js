@@ -4,8 +4,6 @@ import * as mariadb from "mariadb";
 config(); 
 
 
-
-// Create a pool (synchronous)
 const pool = mariadb.createPool({
     host: process.env.DB_HOST,
     user: process.env.DB_USER,
@@ -18,9 +16,9 @@ const pool = mariadb.createPool({
 // Async function to test connection
 const dbConnect = async () => {
     try {
-        const conn = await pool.getConnection(); // get connection
+        const conn = await pool.getConnection(); 
         console.log("DB connected");
-        conn.release(); // release back to pool
+        conn.release(); 
     } catch (error) {
         console.log("Failed to connect DB:", error);
     }
