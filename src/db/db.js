@@ -4,24 +4,14 @@ import * as mariadb from "mariadb";
 config(); 
 
 
-const pool = mariadb.createPool({
+export const pool = mariadb.createPool({
     host: process.env.DB_HOST,
     user: process.env.DB_USER,
     password: process.env.DB_PASSWORD,
     database: process.env.DB_NAME,
     port: process.env.DB_PORT,
-    connectionLimit: 5
+    connectionLimit: 5 ,
+    supportBigNumbers: true,
+    bigNumberStrings: true
 });
 
-// Async function to test connection
-const dbConnect = async () => {
-    try {
-        const conn = await pool.getConnection(); 
-        console.log("DB connected");
-        conn.release(); 
-    } catch (error) {
-        console.log("Failed to connect DB:", error);
-    }
-};
-
-export default dbConnect;
