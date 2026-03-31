@@ -9,6 +9,13 @@ export const TokenModel = {
     );
   },
 
+  deleteByUser: async (user_id) => {
+  return await pool.query(
+    "DELETE FROM refresh_tokens WHERE user_id=?",
+    [user_id]
+  );
+},
+
   findValidToken: async ({ user_id, token }) => {
     const rows = await pool.query(
       'SELECT * FROM refresh_tokens WHERE user_id=? AND token=? AND expires_at > NOW()',

@@ -6,10 +6,28 @@ import { TokenModel } from "../models/token.model.js";
 const JWT_SECRET = process.env.JWT_SECRET;
 const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET;
 
+const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d@#$%^&*!]{6,}$/;
+
 
 export const signup = async (req, res) => {
   try {
     const { name, email, password } = req.body;
+
+     if (!name || !email || !password) {
+      return res.status(400).json({ message: "All fields are required" });
+    }
+
+    //  if (!emailRegex.test(email)) {
+    //   return res.status(400).json({ message: "Invalid email format" });
+    // }
+
+    // if (!passwordRegex.test(password)) {
+    //   return res.status(400).json({
+    //     message:
+    //       "Password must be at least 6 characters and contain at least 1 letter and 1 number"
+    //   });
+    // }
 
     const existing = await UserModel.findByEmail(email);
     if (existing) {
@@ -29,10 +47,17 @@ export const signup = async (req, res) => {
 };
 
 
-// ✅ LOGIN
+// LOGIN
 export const login = async (req, res) => {
   try {
     const { email, password } = req.body;
+     if (!email || !password) {
+      return res.status(400).json({ message: "Email and password required" });
+    }
+
+    // if (!emailRegex.test(email)) {
+    //   return res.status(400).json({ message: "Invalid email format" });
+    // }
 
     const user = await UserModel.findByEmail(email);
     if (!user) {
@@ -47,27 +72,29 @@ export const login = async (req, res) => {
     const accessToken = jwt.sign(
       { id: user.id.toString() },
       JWT_SECRET,
-      { expiresIn: "15m" }
+      { expiresIn: "7d" }
     );
 
     const refreshToken = jwt.sign(
       { id: user.id.toString() },
       JWT_REFRESH_SECRET,
-      { expiresIn: "7d" }
+      { expiresIn: "10d" }
     );
 
-    // store refresh token in DB
-    await TokenModel.create({
-      user_id: user.id,
-      token: refreshToken,
-      expires_at: new Date(Date.now() + 7 * 24 * 3600 * 1000)
-    });
+    // 🔥 Step 1: delete old tokens
+await TokenModel.deleteByUser(user.id);
+
+// 🔥 Step 2: create new token
+await TokenModel.create({
+  user_id: user.id,
+  token: refreshToken,
+  expires_at: new Date(Date.now() + 10 * 24 * 3600 * 1000)
+});
 
     res
       .cookie("refreshToken", refreshToken, {
         httpOnly: true,
         secure: false,
-        sameSite: "strict"
       })
       .status(200)
       .json({
@@ -81,13 +108,13 @@ export const login = async (req, res) => {
 };
 
 
-// ✅ REFRESH TOKEN
+//  REFRESH TOKEN
 export const refreshAccessToken = async (req, res) => {
   try {
     const token = req.cookies.refreshToken;
 
     if (!token) {
-      return res.status(401).json({ message: "No refresh token" });
+      return res.status(401).json({ message: "No refresh token please login" });
     }
 
     jwt.verify(token, JWT_REFRESH_SECRET, async (err, decoded) => {
@@ -119,7 +146,7 @@ export const refreshAccessToken = async (req, res) => {
 };
 
 
-// ✅ LOGOUT
+// LOGOUT
 export const logout = async (req, res) => {
   try {
     const token = req.cookies.refreshToken;
