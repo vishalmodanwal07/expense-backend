@@ -1,16 +1,15 @@
-import { BudgetModel } from "../models/budget.model.js";
-import { CategoryModel } from "../models/category.model.js";
+import { getCurrentMonth } from "../../utils/get-curr-month.js";
+import {BudgetModel} from "../models/budget.model.js"
 
 export const setBudget = async (req, res) => {
   try {
     const user_id = req.user.id;
-
-    const { category_id, month, amount_limit } = req.body;
+    const { month, amount_limit } = req.body;
 
     // ✅ validation
-    if (!category_id || !month || !amount_limit) {
+    if (!month || !amount_limit) {
       return res.status(400).json({
-        message: "category_id, month, amount_limit required"
+        message: "month, amount_limit required"
       });
     }
 
@@ -20,27 +19,24 @@ export const setBudget = async (req, res) => {
       });
     }
 
-    // ✅ category exist check (IMPORTANT)
-    const category = await pool.query(
-      "SELECT id FROM categories WHERE id=?",
-      [category_id]
-    );
+    // 🔥 CURRENT MONTH CHECK
+    const currentMonth = getCurrentMonth();
 
-    if (category.length === 0) {
+    if (month !== currentMonth) {
       return res.status(400).json({
-        message: "Invalid category_id"
+        message: "❌ Please select current month only. Budget can be set only for this month."
       });
     }
 
+    // ✅ SAVE
     await BudgetModel.createOrUpdate({
       user_id,
-      category_id,
       month,
       amount_limit
     });
 
     res.status(200).json({
-      message: "Budget set successfully"
+      message: "✅ Budget set successfully for current month"
     });
 
   } catch (err) {
@@ -52,13 +48,7 @@ export const getBudgets = async (req, res) => {
   try {
     const user_id = req.user.id;
 
-    const data = await pool.query(
-      `SELECT b.*, c.name AS category_name, c.color 
-       FROM budgets b
-       JOIN categories c ON b.category_id = c.id
-       WHERE b.user_id=?`,
-      [user_id]
-    );
+    const data = await BudgetModel.getAllByUser(user_id);
 
     res.json(data);
 
@@ -72,13 +62,7 @@ export const getBudgetByMonth = async (req, res) => {
     const user_id = req.user.id;
     const { month } = req.query;
 
-    const data = await pool.query(
-      `SELECT b.*, c.name AS category_name 
-       FROM budgets b
-       JOIN categories c ON b.category_id = c.id
-       WHERE b.user_id=? AND b.month=?`,
-      [user_id, month]
-    );
+    const data = await BudgetModel.getByMonth(user_id, month);
 
     res.json(data);
 
@@ -86,24 +70,6 @@ export const getBudgetByMonth = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
-
-export const deleteBudget = async (req, res) => {
-  try {
-    const user_id = req.user.id;
-    const { id } = req.params;
-
-    await BudgetModel.delete(id, user_id);
-
-    res.json({
-      message: "Budget deleted successfully"
-    });
-
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
-};
-
-
 
 export const getBudgetSummary = async (req, res) => {
   try {
@@ -116,38 +82,96 @@ export const getBudgetSummary = async (req, res) => {
       });
     }
 
-    // 🔥 Step 1: budgets fetch
-    const budgets = await pool.query(
-      "SELECT * FROM budgets WHERE user_id=? AND month=?",
-      [user_id, month]
-    );
+    // 🔥 CURRENT MONTH CHECK
+    const currentMonth = getCurrentMonth();
 
-    const result = [];
-
-    // 🔥 Step 2: loop budgets
-    for (let b of budgets) {
-
-      // 🔥 Step 3: expense total
-      const expense = await pool.query(
-        `SELECT SUM(amount) as total 
-         FROM expenses 
-         WHERE user_id=? 
-         AND category_id=? 
-         AND DATE_FORMAT(expense_date, '%Y-%m')=?`,
-        [user_id, b.category_id, month]
-      );
-
-      const spent = expense[0].total || 0;
-
-      result.push({
-        category_id: b.category_id,
-        budget: b.amount_limit,
-        spent,
-        remaining: b.amount_limit - spent
+    if (month !== currentMonth) {
+      return res.status(400).json({
+        message: "❌ Only current month allowed"
       });
     }
 
-    res.json(result);
+    // ✅ budget
+    const budgetData = await pool.query(
+      "SELECT amount_limit FROM budgets WHERE user_id=? AND month=?",
+      [user_id, month]
+    );
+
+    const budget = budgetData[0]?.amount_limit || 0;
+
+    // ✅ total expense
+    const expenseData = await pool.query(
+      `SELECT SUM(amount) as total 
+       FROM expenses 
+       WHERE user_id=? 
+       AND DATE_FORMAT(expense_date, '%Y-%m')=?`,
+      [user_id, month]
+    );
+
+    const spent = expenseData[0].total || 0;
+
+    res.json({
+      budget,
+      spent,
+      remaining: budget - spent
+    });
+
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+
+
+
+
+export const updateCurrentMonthBudget = async (req, res) => {
+  try {
+    const user_id = req.user.id;
+    const { amount_limit } = req.body;
+
+    // ✅ validation
+    if (!amount_limit) {
+      return res.status(400).json({
+        message: "amount_limit is required"
+      });
+    }
+
+    if (amount_limit <= 0) {
+      return res.status(400).json({
+        message: "amount_limit must be greater than 0"
+      });
+    }
+
+    const currentMonth = getCurrentMonth();
+
+    // ✅ create OR update (same query handles both)
+    await BudgetModel.createOrUpdate({
+      user_id,
+      month: currentMonth,   // 🔥 auto set
+      amount_limit
+    });
+
+    res.status(200).json({
+      message: "✅ Budget updated for current month",
+      month: currentMonth
+    });
+
+  } catch (err) {
+    res.status(500).json({
+      message: err.message
+    });
+  }
+};
+
+export const getCurrentMonthBudget = async (req, res) => {
+  try {
+    const user_id = req.user.id;
+    const currentMonth = getCurrentMonth();
+
+    const data = await BudgetModel.getByMonth(user_id, currentMonth);
+
+    res.json(data[0] || { amount_limit: 0 });
 
   } catch (err) {
     res.status(500).json({ message: err.message });

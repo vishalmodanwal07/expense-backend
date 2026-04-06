@@ -15,3 +15,14 @@ export const pool = mariadb.createPool({
     bigNumberStrings: true
 });
 
+export const testConnection = async () => {
+  let conn;
+  try {
+    conn = await pool.getConnection();
+    console.log("✅ MariaDB Connected Successfully");
+  } catch (error) {
+    console.error("❌ DB Connection Failed:", error.message);
+  } finally {
+    if (conn) conn.release(); // always release
+  }
+};
