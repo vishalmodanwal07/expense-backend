@@ -1,5 +1,6 @@
 import { getCurrentMonth } from "../../utils/get-curr-month.js";
-import {BudgetModel} from "../models/budget.model.js"
+import {BudgetModel} from "../models/budget.model.js";
+import { pool } from "../db/db.js";
 
 export const setBudget = async (req, res) => {
   try {
@@ -44,7 +45,7 @@ export const setBudget = async (req, res) => {
   }
 };
 
-export const getBudgets = async (req, res) => {
+export const getBudget = async (req, res) => {
   try {
     const user_id = req.user.id;
 
@@ -74,7 +75,7 @@ export const getBudgetByMonth = async (req, res) => {
 export const getBudgetSummary = async (req, res) => {
   try {
     const user_id = req.user.id;
-    const { month } = req.query;
+    const  month  = getCurrentMonth();
 
     if (!month) {
       return res.status(400).json({

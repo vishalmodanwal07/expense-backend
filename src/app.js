@@ -31,4 +31,5 @@ app.use("/api/v1/expense" , expenseRoutes);
 app.use("/api/v1/budget" , budgetRoutes);
 app.use("/api/v1/categories", categoryRoutes);
 
+
 export default app;

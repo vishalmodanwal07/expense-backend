@@ -167,3 +167,24 @@ export const logout = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
+
+export const getCurrentUser = async (req, res) => {
+  try {
+
+    
+    const user = await UserModel.findById(req.user?.id)
+      
+
+   
+    return res.status(200).json({
+      user,
+      message: "current user fetched successfully"
+    });
+
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      message: "Something went wrong"
+    });
+  }
+};
