@@ -22,11 +22,9 @@ export const ExpenseModel = {
 
   getAll: async (user_id) => {
     return await pool.query(
-      `SELECT e.*, c.name AS category_name, c.color
-       FROM expenses e
-       LEFT JOIN categories c ON e.category_id = c.id
-       WHERE e.user_id=?
-       ORDER BY e.expense_date DESC`,
+      `SELECT SUM(amount) AS totalExpense
+      FROM expenses
+      WHERE user_id = ?`
       [user_id]
     );
   },

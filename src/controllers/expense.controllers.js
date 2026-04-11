@@ -1,3 +1,4 @@
+import { pool } from "../db/db.js";
 import { CategoryModel } from "../models/category.model.js";
 import { ExpenseModel } from "../models/expense.model.js";
 
@@ -10,16 +11,16 @@ export const createExpense = async (req, res) => {
       title,
       amount,
       expense_date,
-      category_id,
+      cate,
       currency,
       payment_method,
       notes
     } = req.body;
 
     // ✅ validation
-    if (!title || !amount || !expense_date || !category_id) {
+    if (!title || !amount || !expense_date || !cate) {
       return res.status(400).json({
-        message: "title, amount, expense_date, category_id required"
+        message: "title, amount, expense_date, category required"
       });
     }
 
@@ -29,17 +30,17 @@ export const createExpense = async (req, res) => {
       });
     }
 
-    // ✅ category exist check (IMPORTANT)
-    const category = await pool.query(
-      "SELECT id FROM categories WHERE id=?",
-      [category_id]
-    );
+    // // ✅ category exist check (IMPORTANT)
+    // const category = await pool.query(
+    //   "SELECT id FROM categories WHERE id=?",
+    //   [category_id]
+    // );
 
-    if (category.length === 0) {
-      return res.status(400).json({
-        message: "Invalid category_id"
-      });
-    }
+    // if (category.length === 0) {
+    //   return res.status(400).json({
+    //     message: "Invalid category_id"
+    //   });
+    // }
 
     const result = await ExpenseModel.create({
       user_id,
@@ -71,7 +72,7 @@ export const getExpenses = async (req, res) => {
   try {
     const user_id = req.user.id;
 
-    const data = await ExpenseModel.getAll(user_id);
+    const [data] = await ExpenseModel.getAll(user_id);
 
     res.status(200).json(data);
 
