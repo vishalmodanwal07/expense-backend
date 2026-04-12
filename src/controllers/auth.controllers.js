@@ -2,6 +2,7 @@ import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { UserModel } from "../models/user.model.js";
 import { TokenModel } from "../models/token.model.js";
+import { emailContent, sendEmail } from "../../utils/mail.js";
 
 const JWT_SECRET = process.env.JWT_SECRET;
 const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET;
@@ -36,13 +37,20 @@ export const signup = async (req, res) => {
 
     const user = await UserModel.create({ name, email, password });
 
+      await sendEmail({
+      email: req.body.email,   
+      subject: "Welcome User",
+      mailgenContent: emailContent(req.body.name)
+    });
+
+
     res.status(201).json({
       message: "User created",
       userId: user.insertId.toString()
     });
-
   } catch (err) {
-    res.status(500).json({ message: "failed to create user" });
+    console.error(err);
+    res.status(500).json({ message: "failed to create user"});
   }
 };
 
@@ -170,12 +178,7 @@ export const logout = async (req, res) => {
 
 export const getCurrentUser = async (req, res) => {
   try {
-
-    
     const user = await UserModel.findById(req.user?.id)
-      
-
-   
     return res.status(200).json({
       user,
       message: "current user fetched successfully"
