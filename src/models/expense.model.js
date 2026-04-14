@@ -1,15 +1,16 @@
-import {pool} from "../db/db.js";
+import { pool } from "../db/db.js";
 
 export const ExpenseModel = {
 
+  // CREATE
   create: async (data) => {
-    return await pool.query(
+    const result = await pool.query(
       `INSERT INTO expenses 
-      (user_id, category_id, title, amount, currency, expense_date, payment_method, notes)
+      (user_id, category, title, amount, currency, expense_date, payment_method, notes)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         data.user_id,
-        data.category_id || null,
+        data.category,
         data.title,
         data.amount,
         data.currency || "INR",
@@ -18,29 +19,48 @@ export const ExpenseModel = {
         data.notes || null
       ]
     );
+    return result;
   },
 
+  // TOTAL
   getAll: async (user_id) => {
-    return await pool.query(
-      `SELECT SUM(amount) AS totalExpense
-      FROM expenses
-      WHERE user_id = ?`
-      [user_id]
-    );
-  },
+  const rows = await pool.query(
+    `SELECT SUM(amount) AS totalExpense
+     FROM expenses
+     WHERE user_id = ?`,
+    [user_id]
+  );
+  return rows;
+},
 
+getAllExpenses: async (user_id, limit, offset) => {
+  const rows = await pool.query(
+    `SELECT id, user_id, category, title, amount, currency,
+            expense_date, payment_method, notes, created_at
+     FROM expenses
+     WHERE user_id = ?
+     ORDER BY expense_date DESC, id DESC
+     LIMIT ? OFFSET ?`,
+    [user_id, limit, offset]
+  );
+
+  return rows;
+},
+
+  // GET SINGLE
   getById: async (id, user_id) => {
-    const rows = await pool.query(
+    const [rows] = await pool.query(
       "SELECT * FROM expenses WHERE id=? AND user_id=?",
       [id, user_id]
     );
     return rows[0];
   },
 
+  // UPDATE
   update: async (id, user_id, data) => {
-    return await pool.query(
+    const [result] = await pool.query(
       `UPDATE expenses SET 
-        category_id=?,
+        category=?,
         title=?,
         amount=?,
         currency=?,
@@ -49,23 +69,39 @@ export const ExpenseModel = {
         notes=?
        WHERE id=? AND user_id=?`,
       [
-        data.category_id || null,
+        data.category,
         data.title,
         data.amount,
-        data.currency,
+        data.currency || "INR",
         data.expense_date,
-        data.payment_method,
-        data.notes,
+        data.payment_method || "cash",
+        data.notes || null,
         id,
         user_id
       ]
     );
+    return result;
   },
 
+  // DELETE
   delete: async (id, user_id) => {
-    return await pool.query(
+    const [result] = await pool.query(
       "DELETE FROM expenses WHERE id=? AND user_id=?",
       [id, user_id]
     );
+    return result;
+  },
+
+  // SUMMARY (category wise)
+  summary: async (userId) => {
+    const [rows] = await pool.query(
+      `SELECT category, SUM(amount) as total 
+       FROM expenses 
+       WHERE user_id = ? 
+       AND expense_date >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+       GROUP BY category`,
+      [userId]
+    );
+    return rows;
   }
 };

@@ -1,5 +1,10 @@
 const getCurrentMonth = () => {
   const now = new Date();
-  return now.toISOString().slice(0, 7); // YYYY-MM
+
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+
+  return `${year}-${month}`; // YYYY-MM
 };
- export {getCurrentMonth};
+
+export { getCurrentMonth };

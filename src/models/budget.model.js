@@ -1,3 +1,4 @@
+import { getCurrentMonth } from '../../utils/get-curr-month.js';
 import { pool } from '../db/db.js';
 
 export const BudgetModel = {
@@ -25,14 +26,28 @@ export const BudgetModel = {
   },
 
   // ✅ GET BY MONTH
-  getByMonth: async (user_id, month) => {
-    return await pool.query(
-      `SELECT * 
-       FROM budgets 
-       WHERE user_id = ? AND month = ?`,
-      [user_id, month]
-    );
-  },
+ getBudget: async (user_id) => {
+  const rows = await pool.query(
+    `SELECT amount_limit FROM budgets
+     WHERE user_id = ?
+     AND month = MONTH(CURRENT_DATE())
+     AND year = YEAR(CURRENT_DATE())`,
+    [user_id]
+  );
+  return rows[0]?.amount || 0;
+},
+
+  getMonthlyTotal: async (user_id) => {
+    const current = getCurrentMonth();
+  const rows = await pool.query(
+    `SELECT COALESCE(SUM(amount),0) as total
+     FROM expenses
+     WHERE user_id = ?
+      AND DATE_FORMAT(expense_date, '%Y-%m') = ?`,
+    [user_id, current]
+  );
+  return rows[0].total;
+},
 
   // ✅ DELETE
   delete: async (id, user_id) => {
