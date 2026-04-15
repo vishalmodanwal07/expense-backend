@@ -18,7 +18,7 @@ export const UserModel = {
   },
 
   findById: async (id) => {
-    const rows = await pool.query('SELECT email , name FROM users WHERE id=?', [id]);
+    const rows = await pool.query('SELECT email , name , id FROM users WHERE id=?', [id]);
     return rows[0];
   }
 };

@@ -49,7 +49,7 @@ export const getBudget = async (req, res) => {
   try {
     const user_id = req.user.id;
 
-    const data = await BudgetModel.getAllByUser(user_id);
+    const [data] = await BudgetModel.getAllByUser(user_id);
 
     res.json(data);
 

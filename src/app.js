@@ -18,11 +18,11 @@ app.use(express.urlencoded({extended: true , limit: "16kb"}));
 
 
 
-// app.get('/api/v1/health', (req, res) => {
-//    res.status(200).json({
-//     data : "hello"
-//    })
-// });
+app.get('/api/v1/health', (req, res) => {
+   res.status(200).json({
+    data : "hello"
+   })
+});
 app.use((req, res , next) => {
   console.log(req.method, req.url);
   next();

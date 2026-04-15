@@ -99,6 +99,8 @@ await TokenModel.create({
   expires_at: new Date(Date.now() + 10 * 24 * 3600 * 1000)
 });
 
+const userdetails = await UserModel.findById(user.id);
+
     res
       .cookie("refreshToken", refreshToken, {
         httpOnly: true,
@@ -107,7 +109,8 @@ await TokenModel.create({
       .status(200)
       .json({
         message: "login successful",
-        accessToken
+        accessToken ,
+        userdetails ,
       });
 
   } catch (err) {
