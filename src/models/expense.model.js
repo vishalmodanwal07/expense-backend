@@ -36,7 +36,7 @@ export const ExpenseModel = {
 getAllExpenses: async (user_id, limit, offset) => {
   const rows = await pool.query(
     `SELECT id, user_id, category, title, amount, currency,
-            expense_date, payment_method, notes, created_at
+             DATE_FORMAT(expense_date, '%d-%m-%Y') AS expense_date, payment_method, notes, created_at
      FROM expenses
      WHERE user_id = ?
      ORDER BY expense_date DESC, id DESC
@@ -53,7 +53,7 @@ getAllExpenses: async (user_id, limit, offset) => {
       "SELECT * FROM expenses WHERE id=? AND user_id=?",
       [id, user_id]
     );
-    return rows[0];
+    return rows;
   },
 
   // UPDATE
@@ -85,7 +85,7 @@ getAllExpenses: async (user_id, limit, offset) => {
 
   // DELETE
   delete: async (id, user_id) => {
-    const [result] = await pool.query(
+    const result = await pool.query(
       "DELETE FROM expenses WHERE id=? AND user_id=?",
       [id, user_id]
     );

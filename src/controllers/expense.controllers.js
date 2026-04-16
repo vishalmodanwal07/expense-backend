@@ -5,9 +5,126 @@ import { BudgetModel } from "../models/budget.model.js";
 import { io } from "../../server.js";
 
 //  Create Expense
+// export const createExpense = async (req, res) => {
+//   try {
+//     const user_id = req.user.id;
+
+//     let {
+//       title,
+//       amount,
+//       expense_date,
+//       category,
+//       currency = "INR",
+//       payment_method = "cash",
+//       notes = ""
+//     } = req.body;
+
+//     // ✅ VALIDATION
+//     if (!title || !amount || !expense_date || !category) {
+//       return res.status(400).json({
+//         message: "Title, amount, date & category are required"
+//       });
+//     }
+
+//     // ✅ SAFE NUMBER CONVERSION
+//     const expenseAmount = Number(amount);
+//     if (isNaN(expenseAmount) || expenseAmount <= 0) {
+//       return res.status(400).json({
+//         message: "Invalid amount"
+//       });
+//     }
+
+//     // ✅ GET BUDGET
+//     const budgetRows = await BudgetModel.getBudget(user_id);
+//     const budget = Number(budgetRows?.[0]?.amount_limit) || 0;
+
+//     // ✅ GET TOTAL SPENT
+//     const [expenseRows] = await ExpenseModel.getAll(user_id);
+//     const totalSpent = Number(expenseRows?.[0]?.total) || 0;
+
+//     // ✅ CALCULATE NEW TOTAL
+//     const newTotal = totalSpent + expenseAmount;
+
+//     // ❌ BUDGET EXCEEDED CHECK
+//     if (budget > 0 && newTotal > budget) {
+//       return res.status(400).json({
+//         message: "Budget exceeded ❌",
+//         budget,
+//         spent: totalSpent,
+//         remaining: budget - totalSpent
+//       });
+//     }
+
+//     // ⚠️ WARNINGS
+//     let warning = null;
+//     let warningType = null;
+
+//     if (budget > 0) {
+//       const percent = (newTotal / budget) * 100;
+
+//       if (percent >= 90) {
+//         warning = "🚨 90% budget used";
+//         warningType = "danger";
+//       } else if (percent >= 80) {
+//         warning = "⚠️ 80% budget used";
+//         warningType = "warning";
+//       }
+//     }
+
+//     // ✅ CREATE EXPENSE
+//     const result = await ExpenseModel.create({
+//       user_id,
+//       title,
+//       amount: expenseAmount,
+//       expense_date,
+//       category,
+//       currency,
+//       payment_method,
+//       notes
+//     });
+
+//     // ✅ FINAL VALUES
+//     const remaining = budget - newTotal;
+//     const usedPercent =
+//       budget > 0 ? Number(((newTotal / budget) * 100).toFixed(2)) : 0;
+
+//     // 🔥 SOCKET EMIT (VERY IMPORTANT FIX)
+//     if (io) {
+//       io.to(`userId:${user_id}`).emit("expenseUpdate", {
+//         totalSpent: newTotal,
+//         remaining,
+//         usedPercent,
+//         warning,
+//         warningType
+//       });
+//     }
+
+//     // ✅ RESPONSE
+//     return res.status(201).json({
+//       success: true,
+//       message: "Expense created successfully 💰",
+//       id: result.insertId,
+//       warning,
+//       data: {
+//         totalSpent: newTotal,
+//         remaining,
+//         usedPercent
+//       }
+//     });
+
+//   } catch (err) {
+//     console.error("Create Expense Error:", err);
+
+//     return res.status(500).json({
+//       message: "Server error",
+//       error: err.message
+//     });
+//   }
+// };
+
 export const createExpense = async (req, res) => {
   try {
-    const user_id = req.user.id;
+    const user_id = req.user?.id;
 
     let {
       title,
@@ -35,15 +152,22 @@ export const createExpense = async (req, res) => {
     }
 
     // ✅ GET BUDGET
-    const budgetRows = await BudgetModel.getBudget(user_id);
-    const budget = Number(budgetRows?.[0]?.amount_limit) || 0;
+    const budgetRows = await BudgetModel.getAllByUser(user_id);
+    const budget = Number(budgetRows?.[0]?.amount_limit);
+    console.log(budget);
 
-    // ✅ GET TOTAL SPENT
-    const [expenseRows] = await ExpenseModel.getAll(user_id);
-    const totalSpent = Number(expenseRows?.[0]?.total) || 0;
+    // ✅ GET TOTAL SPENT (FIXED BUG 🔥)
+    const expenseData = await ExpenseModel.getAll(user_id);
+
+    const expenseRows = Array.isArray(expenseData)
+      ? expenseData[0] || []
+      : [];
+
+    const totalSpent = Number(expenseRows?.[0]?.totalExpense || 0);
 
     // ✅ CALCULATE NEW TOTAL
     const newTotal = totalSpent + expenseAmount;
+    console.log(newTotal);
 
     // ❌ BUDGET EXCEEDED CHECK
     if (budget > 0 && newTotal > budget) {
@@ -61,6 +185,7 @@ export const createExpense = async (req, res) => {
 
     if (budget > 0) {
       const percent = (newTotal / budget) * 100;
+      console.log(percent)
 
       if (percent >= 90) {
         warning = "🚨 90% budget used";
@@ -88,8 +213,8 @@ export const createExpense = async (req, res) => {
     const usedPercent =
       budget > 0 ? Number(((newTotal / budget) * 100).toFixed(2)) : 0;
 
-    // 🔥 SOCKET EMIT (VERY IMPORTANT FIX)
-    if (io) {
+    // 🔥 SOCKET EMIT FIX
+    if (typeof io !== "undefined") {
       io.to(`userId:${user_id}`).emit("expenseUpdate", {
         totalSpent: newTotal,
         remaining,
@@ -103,7 +228,7 @@ export const createExpense = async (req, res) => {
     return res.status(201).json({
       success: true,
       message: "Expense created successfully 💰",
-      id: result.insertId,
+      id: result?.insertId || null,
       warning,
       data: {
         totalSpent: newTotal,
@@ -224,6 +349,7 @@ export const deleteExpense = async (req, res) => {
     const { id } = req.params;
 
     const existing = await ExpenseModel.getById(id, user_id);
+    console.log(existing);
 
     if (!existing) {
       return res.status(404).json({ message: "Expense not found" });
