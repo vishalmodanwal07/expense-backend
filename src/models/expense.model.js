@@ -33,13 +33,25 @@ export const ExpenseModel = {
   return rows;
 },
 
-getAllExpenses: async (user_id, limit, offset) => {
+getAllExpenses: async (user_id, limit, offset, sort = "latest") => {
+
+  let sortQuery = "ORDER BY expense_date DESC, id DESC"; // default
+
+  if (sort === "high") {
+    sortQuery = "ORDER BY amount DESC";
+  }
+
+  if (sort === "low") {
+    sortQuery = "ORDER BY amount ASC";
+  }
+
   const rows = await pool.query(
     `SELECT id, user_id, category, title, amount, currency,
-             DATE_FORMAT(expense_date, '%d-%m-%Y') AS expense_date, payment_method, notes, created_at
+            DATE_FORMAT(expense_date, '%d-%m-%Y') AS expense_date,
+            payment_method, notes, created_at
      FROM expenses
      WHERE user_id = ?
-     ORDER BY expense_date DESC, id DESC
+     ${sortQuery}
      LIMIT ? OFFSET ?`,
     [user_id, limit, offset]
   );

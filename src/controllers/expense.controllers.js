@@ -386,6 +386,8 @@ export const getTotalExpense = async (req, res) => {
 export const getAllExpenses = async (req, res) => {
   try {
     const user_id = req.user.id;
+    const {sort} = req.query;
+    console.log(sort);
 
     // pagination params
     const page = parseInt(req.query.page) || 1;
@@ -393,7 +395,7 @@ export const getAllExpenses = async (req, res) => {
     const offset = (page - 1) * limit;
 
     // data fetch
-    const expenses = await ExpenseModel.getAllExpenses(user_id, limit, offset);
+    const expenses = await ExpenseModel.getAllExpenses(user_id, limit, offset , sort);
 
     // total count (for frontend pagination)
     const totalRows = await pool.query(
