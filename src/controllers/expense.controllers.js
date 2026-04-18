@@ -424,20 +424,26 @@ export const getAllExpenses = async (req, res) => {
 
 
 export const getSummary = async (req , res) => {
-  const id = req.user.id;
-  const insightData = ExpenseModel.summary(id);
- const summary =  await getInsights(insightData);
- console.log(summary);
- if(!summary){
-  return res.status(500).json({
-    message : "failed to generate summary"
-  })
- }
-
- return res
-       .status(201)
-       .json({
-        message : "summary generated succesfully",
-        summary : summary
-       })
+  try {
+    const id = req.user.id;
+    const insightData = await pool.query(`SELECT * FROM expenses`);
+    console.log(insightData);
+   const summary =  await getInsights(insightData);
+   console.log(summary);
+   if(!summary){
+    return res.status(500).json({
+      message : "failed to generate summary"
+    })
+   }
+  
+   return res
+         .status(201)
+         .json({
+          message : "summary generated succesfully",
+          summary : summary
+         })
+  } catch (error) {
+    throw new Error(error);
+    console.log(error);
+  }
 }

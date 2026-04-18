@@ -107,13 +107,36 @@ getAllExpenses: async (user_id, limit, offset, sort = "latest") => {
   // SUMMARY (category wise)
   summary: async (userId) => {
     const [rows] = await pool.query(
-      `SELECT category, SUM(amount) as total 
+      `SELECT *
        FROM expenses 
-       WHERE user_id = ? 
-       AND expense_date >= DATE_SUB(NOW(), INTERVAL 30 DAY)
-       GROUP BY category`,
+       WHERE user_id = ?`,
       [userId]
     );
     return rows;
-  }
+  },
+
+  getCategoryTotal: async (user_id, category) => {
+  const rows = await pool.query(
+    `SELECT category, SUM(amount) AS total
+     FROM expenses
+     WHERE user_id = ? AND category = ?
+     GROUP BY category`,
+    [user_id, category]
+  );
+
+  return rows;
+},
+getAllCategorySummary: async (user_id) => {
+  const rows = await pool.query(
+    `SELECT category, SUM(amount) AS total
+     FROM expenses
+     WHERE user_id = ?
+     GROUP BY category
+     ORDER BY total DESC`
+    ,
+    [user_id]
+  );
+
+  return rows;
+},
 };

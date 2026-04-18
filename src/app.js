@@ -6,6 +6,7 @@ import expenseRoutes from "./routes/expense.route.js"
 import budgetRoutes from "./routes/budget.route.js"
 import categoryRoutes from "./routes/category.route.js"
 import uploadRoutes from "./routes/upload.route.js"
+import aiRoute from "./routes/ai.route.js";
 const app = express();
 
 app.use(cors({
@@ -32,7 +33,7 @@ app.use("/api/v1/auth", authRoutes);
 app.use("/api/v1/expense" , expenseRoutes);
 app.use("/api/v1/budget" , budgetRoutes);
 app.use("/api/v1/categories", categoryRoutes);
-app.use("/api/v1/upload" , uploadRoutes)
-
+app.use("/api/v1/upload" , uploadRoutes);
+app.use("/api/v1/summary" , aiRoute);
 
 export default app;
