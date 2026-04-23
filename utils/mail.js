@@ -12,16 +12,13 @@ const mailGenertaor = new Mailgen({
 
  const emailtext =   mailGenertaor.generatePlaintext(options.mailgenContent);
  const emailHtml =  mailGenertaor.generate(options.mailgenContent);
- 
- console.log(process.env.MAILTRAP_SMTP_HOST)
 
 
  const transporter = nodemailer.createTransport({
-    host: process.env.MAILTRAP_SMTP_HOST,
-    port:  process.env.MAILTRAP_SMTP_PORT,
+  service : "gmail",
     auth : {
-        user :  process.env.MAILTRAP_SMTP_USER,
-        pass :  process.env.MAILTRAP_SMTP_PASS
+        user :  process.env.EMAIL_USER,
+        pass :  process.env.EMAIL_PASS
 
     }
  });
