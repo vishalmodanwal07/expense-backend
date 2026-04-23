@@ -30,11 +30,11 @@ export const BudgetModel = {
   const rows = await pool.query(
     `SELECT amount_limit FROM budgets
      WHERE user_id = ?
-     AND month = MONTH(CURRENT_DATE())
-     AND year = YEAR(CURRENT_DATE())`,
+     AND month = DATE_FORMAT(CURRENT_DATE(), '%Y-%m')`,
     [user_id]
   );
-  return rows[0]?.amount || 0;
+
+  return rows[0]?.amount_limit || 0;
 },
 
   getMonthlyTotal: async (user_id) => {

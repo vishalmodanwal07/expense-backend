@@ -423,27 +423,42 @@ export const getAllExpenses = async (req, res) => {
 };
 
 
-export const getSummary = async (req , res) => {
+export const getSummary = async (req, res) => {
   try {
-    const id = req.user.id;
-    const insightData = await pool.query(`SELECT * FROM expenses`);
-    console.log(insightData);
-   const summary =  await getInsights(insightData);
-   console.log(summary);
-   if(!summary){
-    return res.status(500).json({
-      message : "failed to generate summary"
-    })
-   }
-  
-   return res
-         .status(201)
-         .json({
-          message : "summary generated succesfully",
-          summary : summary
-         })
+    const userId = req.user.id;
+    const { msg } = req.body;
+
+    // ✅ budget fetch
+   const [data] = await BudgetModel.getAllByUser(userId);
+    console.log(data.amount_limit);
+
+   
+    // ✅ expenses fetch
+    const expenses = await pool.query(
+      `SELECT category, amount FROM expenses WHERE user_id = ?`,
+      [userId]
+    );
+
+    // ✅ no data case
+    if (!expenses.length) {
+      return res.json({
+        message: "No expenses found",
+        summary: "Start adding expenses to get insights."
+      });
+    }
+
+    // ✅ AI call (FIXED)
+    const reply = await getInsights(msg, data.amount_limit , expenses);
+
+    return res.status(200).json({
+      message: "summary generated successfully",
+      summary: reply
+    });
+
   } catch (error) {
-    throw new Error(error);
-    console.log(error);
+    console.error(error);
+    return res.status(500).json({
+      message: "Something went wrong"
+    });
   }
-}
+};

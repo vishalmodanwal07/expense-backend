@@ -50,6 +50,7 @@ export const getBudget = async (req, res) => {
     const user_id = req.user.id;
 
     const [data] = await BudgetModel.getAllByUser(user_id);
+    console.log(data.amount_limit);
 
     res.json(data);
 
