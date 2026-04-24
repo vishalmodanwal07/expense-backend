@@ -70,7 +70,8 @@ getAllExpenses: async (user_id, limit, offset, sort = "latest") => {
 
   // UPDATE
   update: async (id, user_id, data) => {
-    const [result] = await pool.query(
+    // mariadb: query() returns a metadata object for UPDATE, not [rows, fields] — do not array-destructure
+    const result = await pool.query(
       `UPDATE expenses SET 
         category=?,
         title=?,
