@@ -3,7 +3,6 @@ import { getInsights } from "../../utils/AiSummary.js";
 import { ExpenseModel } from "../models/expense.model.js";
 import { BudgetModel } from "../models/budget.model.js";
 import { io } from "../../server.js";
-
 //  Create Expense
 // export const createExpense = async (req, res) => {
 //   try {
@@ -133,7 +132,10 @@ export const createExpense = async (req, res) => {
       category,
       currency = "INR",
       payment_method = "cash",
-      notes = ""
+      notes = "",
+      vendor = "",
+      receipt_url = ""
+
     } = req.body;
 
     // ✅ VALIDATION
@@ -195,6 +197,9 @@ export const createExpense = async (req, res) => {
         warningType = "warning";
       }
     }
+    console.log("Vendor:", vendor);
+console.log("Receipt URL:", receipt_url);
+console.log("Full body:", req.body);
 
     // ✅ CREATE EXPENSE
     const result = await ExpenseModel.create({
@@ -205,7 +210,9 @@ export const createExpense = async (req, res) => {
       category,
       currency,
       payment_method,
-      notes
+      notes,
+      vendor,
+      receipt_url
     });
 
     // ✅ FINAL VALUES
@@ -283,19 +290,82 @@ export const getExpense = async (req, res) => {
 
 
 // Update Expense
+// export const updateExpense = async (req, res) => {
+//   try {
+//     const user_id = req.user.id;
+//     const { id } = req.params;
+
+//      console.log("Update body:", req.body);
+//     const {
+//       title,
+//       amount,
+//       expense_date,
+//       category,
+//       currency,
+//       payment_method,
+//       notes
+//     } = req.body;
+
+//     if (amount && amount <= 0) {
+//       return res.status(400).json({
+//         message: "Amount must be greater than 0"
+//       });
+//     }
+
+//     const existing = await ExpenseModel.getById(id, user_id);
+
+//     if (!existing) {
+//       return res.status(404).json({ message: "Expense not found" });
+//     }
+
+//     // ✅ optional category check
+//     if (category_id) {
+//       const category = await pool.query(
+//         "SELECT id FROM categories WHERE id=?",
+//         [category_id]
+//       );
+
+//       if (category.length === 0) {
+//         return res.status(400).json({
+//           message: "Invalid category_id"
+//         });
+//       }
+//     }
+
+//     await ExpenseModel.update(id, user_id, {
+//       title: title || existing.title,
+//       amount: amount || existing.amount,
+//       expense_date: expense_date || existing.expense_date,
+//       category_id: category_id ?? existing.category_id,
+//       currency: currency || existing.currency,
+//       payment_method: payment_method || existing.payment_method,
+//       notes: notes ?? existing.notes
+//     });
+
+//     res.json({ message: "Expense updated successfully" });
+
+//   } catch (err) {
+//     res.status(500).json({ message: err.message });
+//   }
+// };
+
+
 export const updateExpense = async (req, res) => {
   try {
     const user_id = req.user.id;
     const { id } = req.params;
 
+    console.log("Update body:", req.body);
+
     const {
       title,
       amount,
       expense_date,
-      category_id,
+      category,        // ← category_id se category karo
       currency,
       payment_method,
-      notes
+      notes,
+      vendor="",
     } = req.body;
 
     if (amount && amount <= 0) {
@@ -310,37 +380,24 @@ export const updateExpense = async (req, res) => {
       return res.status(404).json({ message: "Expense not found" });
     }
 
-    // ✅ optional category check
-    if (category_id) {
-      const category = await pool.query(
-        "SELECT id FROM categories WHERE id=?",
-        [category_id]
-      );
-
-      if (category.length === 0) {
-        return res.status(400).json({
-          message: "Invalid category_id"
-        });
-      }
-    }
-
     await ExpenseModel.update(id, user_id, {
       title: title || existing.title,
       amount: amount || existing.amount,
       expense_date: expense_date || existing.expense_date,
-      category_id: category_id ?? existing.category_id,
+      category: category || existing.category,  // ← fix
       currency: currency || existing.currency,
       payment_method: payment_method || existing.payment_method,
-      notes: notes ?? existing.notes
+      notes: notes ?? existing.notes,
+      vendor: vendor || existing.vendor,
     });
 
     res.json({ message: "Expense updated successfully" });
 
   } catch (err) {
+    console.error("Update error:", err);
     res.status(500).json({ message: err.message });
   }
 };
-
 
 // Delete Expense
 export const deleteExpense = async (req, res) => {
@@ -386,60 +443,55 @@ export const getTotalExpense = async (req, res) => {
 export const getAllExpenses = async (req, res) => {
   try {
     const user_id = req.user.id;
-    const {sort} = req.query;
-    console.log(sort);
+    const { sort, category } = req.query;  // ✅ category add
 
-    // pagination params
     const page = parseInt(req.query.page) || 1;
-    const limit = 5;
+    const limit = parseInt(req.query.limit) || 5;
     const offset = (page - 1) * limit;
 
-    // data fetch
-    const expenses = await ExpenseModel.getAllExpenses(user_id, limit, offset , sort);
+    const expenses = await ExpenseModel.getAllExpenses(user_id, limit, offset, sort, category);
 
-    // total count (for frontend pagination)
-    const totalRows = await pool.query(
-      `SELECT COUNT(*) AS total FROM expenses WHERE user_id = ?`,
-      [user_id]
-    );
+    // ✅ Total count 
+    let countQuery = `SELECT COUNT(*) AS total FROM expenses WHERE user_id = ?`;
+    let countParams = [user_id];
 
+    if (category) {
+      countQuery += ` AND category = ?`;
+      countParams.push(category);
+    }
+
+    const totalRows = await pool.query(countQuery, countParams);
     const total = totalRows[0].total;
     const totalPages = Math.ceil(total / limit);
 
     return res.status(200).json({
-      page,
-      limit,
-      total,
-      totalPages,
+      page, limit, total, totalPages,
       count: expenses.length,
       data: expenses
     });
 
   } catch (err) {
-    return res.status(500).json({
-      message: err.message
-    });
+    return res.status(500).json({ message: err.message });
   }
 };
+
 
 
 export const getSummary = async (req, res) => {
   try {
     const userId = req.user.id;
-    const { msg } = req.body;
+    const { message } = req.body;
+    console.log("Message:", message);
+    console.log("UserId:",userId);
 
-    // ✅ budget fetch
-   const [data] = await BudgetModel.getAllByUser(userId);
-    console.log(data.amount_limit);
+    const budgetRows = await BudgetModel.getAllByUser(userId);
+    const data = budgetRows[0];
 
-   
-    // ✅ expenses fetch
     const expenses = await pool.query(
       `SELECT category, amount FROM expenses WHERE user_id = ?`,
       [userId]
     );
 
-    // ✅ no data case
     if (!expenses.length) {
       return res.json({
         message: "No expenses found",
@@ -447,8 +499,7 @@ export const getSummary = async (req, res) => {
       });
     }
 
-    // ✅ AI call (FIXED)
-    const reply = await getInsights(msg, data.amount_limit , expenses);
+    const reply = await getInsights(message, data.amount_limit, expenses);
 
     return res.status(200).json({
       message: "summary generated successfully",
@@ -460,5 +511,19 @@ export const getSummary = async (req, res) => {
     return res.status(500).json({
       message: "Something went wrong"
     });
+  }
+};
+
+export const getUserCategories = async (req, res) => {
+  try {
+    const user_id = req.user.id;
+    const rows = await pool.query(
+      `SELECT DISTINCT category FROM expenses WHERE user_id = ? ORDER BY category`,
+      [user_id]
+    );
+    const categories = rows.map((r) => r.category);
+    return res.status(200).json({ categories });
+  } catch (err) {
+    return res.status(500).json({ message: err.message });
   }
 };
