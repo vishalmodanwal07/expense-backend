@@ -46,7 +46,7 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 export const getInsights = async (message, budget, expenses) => {
   const model = genAI.getGenerativeModel({
-    model: "gemini-2.5-flash"
+   model: "gemini-2.5-flash"
   });
 
   // 👉 Category summary banana zaroori hai

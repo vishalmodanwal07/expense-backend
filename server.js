@@ -3,6 +3,7 @@ import app from "./src/app.js";
 import { pool, testConnection } from "./src/db/db.js";
 config({ path: "./.env" });
 
+
 import http from "http";
 import { Server } from "socket.io";
 
