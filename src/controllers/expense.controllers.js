@@ -2,7 +2,22 @@ import { pool } from "../db/db.js";
 import { getInsights } from "../../utils/AiSummary.js";
 import { ExpenseModel } from "../models/expense.model.js";
 import { BudgetModel } from "../models/budget.model.js";
+import { UserModel } from "../models/user.model.js";
+import { userHasValidContactForExpenses } from "../../utils/contactValidation.js";
 import { io } from "../../server.js";
+
+const CONTACT_FOR_EXPENSE_MSG =
+  "Add a valid email and 10-digit Indian mobile on your profile before recording expenses.";
+
+async function assertUserMayWriteExpense(userId) {
+  const owner = await UserModel.findByIdFull(userId);
+  if (!userHasValidContactForExpenses(owner)) {
+    const err = new Error(CONTACT_FOR_EXPENSE_MSG);
+    err.statusCode = 403;
+    err.code = "CONTACT_INCOMPLETE";
+    throw err;
+  }
+}
 //  Create Expense
 // export const createExpense = async (req, res) => {
 //   try {
@@ -137,6 +152,18 @@ export const createExpense = async (req, res) => {
       receipt_url = ""
 
     } = req.body;
+
+    try {
+      await assertUserMayWriteExpense(user_id);
+    } catch (e) {
+      if (e.statusCode === 403) {
+        return res.status(403).json({
+          message: e.message,
+          code: e.code
+        });
+      }
+      throw e;
+    }
 
     // ✅ VALIDATION
     if (!title || !amount || !expense_date || !category) {
@@ -357,6 +384,18 @@ export const updateExpense = async (req, res) => {
 
     console.log("Update body:", req.body);
 
+    try {
+      await assertUserMayWriteExpense(user_id);
+    } catch (e) {
+      if (e.statusCode === 403) {
+        return res.status(403).json({
+          message: e.message,
+          code: e.code
+        });
+      }
+      throw e;
+    }
+
     const {
       title,
       amount,
@@ -523,6 +562,22 @@ export const getUserCategories = async (req, res) => {
     );
     const categories = rows.map((r) => r.category);
     return res.status(200).json({ categories });
+  } catch (err) {
+    return res.status(500).json({ message: err.message });
+  }
+};
+
+/** Category totals (all expenses) for dashboard charts. */
+export const getCategorySummary = async (req, res) => {
+  try {
+    const user_id = req.user.id;
+    const rows = await ExpenseModel.getAllCategorySummary(user_id);
+    const list = Array.isArray(rows) ? rows : [];
+    const items = list.map((r) => ({
+      category: r.category,
+      total: Number(r.total)
+    }));
+    return res.status(200).json({ items });
   } catch (err) {
     return res.status(500).json({ message: err.message });
   }

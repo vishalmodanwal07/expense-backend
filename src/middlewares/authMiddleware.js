@@ -12,8 +12,11 @@ export const authMiddleware = (req, res, next) => {
 
     const decoded = jwt.verify(token, JWT_SECRET);
 
-
-    req.user = decoded; // { id: "userId" }
+    const rawId = decoded?.id ?? decoded?.sub;
+    req.user = {
+      ...decoded,
+      id: rawId != null && rawId !== "" ? String(rawId) : rawId
+    };
 
     next();
 
