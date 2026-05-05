@@ -32,3 +32,5 @@ Thumbs.db
 
 # Optional npm cache
 .npm
+# Uploads (IMPORTANT)
+uploads/

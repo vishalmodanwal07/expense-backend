@@ -26,3 +26,69 @@ export const testConnection = async () => {
     if (conn) conn.release(); // always release
   }
 };
+
+/**
+ * Adds `users.mobile` + unique index if missing (matches code that expects this column).
+ * Safe to run on every startup; ignores "already exists" errors.
+ */
+export const ensureUsersMobileColumn = async () => {
+  try {
+    await pool.query(
+      "ALTER TABLE users ADD COLUMN mobile VARCHAR(16) NULL"
+    );
+    console.log("✅ Schema: added column users.mobile");
+  } catch (e) {
+    const msg = e?.sqlMessage || e?.message || "";
+    if (
+      e?.errno === 1060 ||
+      e?.code === "ER_DUP_FIELDNAME" ||
+      /duplicate column/i.test(msg)
+    ) {
+      /* column already present */
+    } else {
+      console.warn("ensureUsersMobileColumn (ADD COLUMN):", msg);
+    }
+  }
+
+  try {
+    await pool.query(
+      "ALTER TABLE users ADD UNIQUE INDEX uq_users_mobile (mobile)"
+    );
+    console.log("✅ Schema: added unique index uq_users_mobile");
+  } catch (e) {
+    const msg = e?.sqlMessage || e?.message || "";
+    if (
+      e?.errno === 1061 ||
+      /duplicate key name/i.test(msg) ||
+      /already exists/i.test(msg)
+    ) {
+      /* index already present */
+    } else {
+      console.warn("ensureUsersMobileColumn (UNIQUE INDEX):", msg);
+    }
+  }
+};
+
+/**
+ * Adds `users.role` if missing (login/profile expect this column).
+ * Safe to run on every startup; ignores "already exists" errors.
+ */
+export const ensureUsersRoleColumn = async () => {
+  try {
+    await pool.query(
+      "ALTER TABLE users ADD COLUMN role VARCHAR(32) NOT NULL DEFAULT 'user'"
+    );
+    console.log("✅ Schema: added column users.role");
+  } catch (e) {
+    const msg = e?.sqlMessage || e?.message || "";
+    if (
+      e?.errno === 1060 ||
+      e?.code === "ER_DUP_FIELDNAME" ||
+      /duplicate column/i.test(msg)
+    ) {
+      /* column already present */
+    } else {
+      console.warn("ensureUsersRoleColumn:", msg);
+    }
+  }
+};
