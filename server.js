@@ -7,6 +7,8 @@ config({ path: "./.env" });
 import http from "http";
 import { Server } from "socket.io";
 
+console.log("Starting server..." , process.env.DB_HOST);
+
 const server = http.createServer(app);
 
 const io = new Server(server ,  {
